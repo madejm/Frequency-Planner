@@ -82,8 +82,8 @@ function App() {
         {!saved && <p class="small">If browser storage is unavailable, inputs remain usable for this visit.</p>}
         <div class="rig"><span>YOUR RIG</span><strong>2 × PTM-10 <i>stereo</i></strong><strong>1 × PTM-33 <i>4 mono</i></strong><p>6 RF carriers · 8 mono monitor feeds</p></div>
         <label for="occupied">Occupied frequencies <span>MHz</span></label>
-        <textarea id="occupied" value={settings.occupied} onInput={e => change('occupied', e.currentTarget.value)} placeholder={'550.250, 561.500\n575.000'} rows={3} spellcheck={false} aria-describedby="occupied-help" />
-        <p id="occupied-help" class="hint">Add wireless mics and other active transmitters. Separate with spaces, commas, or new lines. Decimal point only.</p>
+        <textarea id="occupied" value={settings.occupied} onInput={e => change('occupied', e.currentTarget.value)} placeholder={'550.250, 555.0-557.5\n575.000'} rows={3} spellcheck={false} aria-describedby="occupied-help" />
+        <p id="occupied-help" class="hint">Add transmitters or occupied ranges, such as 555.0-557.5. Separate entries with spaces, commas, or new lines. Decimal point only. Ranges exclude channels with the selected spacing; only individual frequencies participate in IM3 calculations.</p>
         <div class="field-pair">
           <div><label for="spacing">Channel spacing <span>kHz</span></label><input id="spacing" type="number" min="25" max="2000" step="1" required value={settings.spacing} onInput={e => change('spacing', e.currentTarget.value)} /></div>
           <div><label for="intermod">IM3 guard <span>kHz</span></label><input id="intermod" type="number" min="25" max="2000" step="1" required value={settings.intermod} onInput={e => change('intermod', e.currentTarget.value)} /></div>

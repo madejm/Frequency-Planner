@@ -35,12 +35,23 @@ export function readBanks(ptm10: string, ptm33: string): Bank[] {
 }
 
 export function parseSettings(settings: Settings) {
-  const values = settings.occupied.trim() ? settings.occupied.trim().split(/[\s,;]+/) : [];
-  if (values.some(v => !/^\d+(\.\d{1,3})?$/.test(v) || Number(v) <= 0 || Number(v) > 10000)) {
-    throw new Error('Enter occupied frequencies in MHz, for example 550.250, 561.500. Use a decimal point.');
+  const values = settings.occupied.trim() ? settings.occupied.trim().replace(/\s*[-–]\s*/g, '-').split(/[\s,;]+/) : [];
+  const occupied: number[] = [];
+  const occupiedRanges: { start: number; end: number }[] = [];
+  for (const value of values) {
+    const match = /^(\d+(?:\.\d{1,3})?)(?:-(\d+(?:\.\d{1,3})?))?$/.exec(value);
+    const start = match ? Math.round(Number(match[1]) * 1000) : 0;
+    const end = match?.[2] ? Math.round(Number(match[2]) * 1000) : start;
+    if (!match || start <= 0 || end > 10000000 || end < start) {
+      throw new Error('Enter occupied MHz as frequencies or ascending ranges, for example 550.250, 555.0-557.5. Use a decimal point and up to 3 decimal places.');
+    }
+    if (start === end) {
+      if (!occupied.includes(start)) occupied.push(start);
+    } else if (!occupiedRanges.some(range => range.start === start && range.end === end)) {
+      occupiedRanges.push({ start, end });
+    }
   }
-  const occupied = [...new Set(values.map(v => Math.round(Number(v) * 1000)))];
-  if (occupied.length > 24) throw new Error('Use at most 24 occupied frequencies.');
+  if (occupied.length + occupiedRanges.length > 24) throw new Error('Use at most 24 occupied frequencies or ranges.');
   const spacing = Number(settings.spacing), intermod = Number(settings.intermod);
   const min = Number(settings.min), max = Number(settings.max);
   if (!settings.spacing.trim() || !settings.intermod.trim() || !settings.min.trim() || !settings.max.trim() ||
@@ -48,7 +59,7 @@ export function parseSettings(settings: Settings) {
       spacing > 2000 || intermod > 2000 || min < 1 || max > 10000 || min >= max) {
     throw new Error('Use guards of 25–2000 kHz and a valid minimum/maximum MHz range.');
   }
-  return { occupied, spacing, intermod, min: Math.round(min * 1000), max: Math.round(max * 1000) };
+  return { occupied, occupiedRanges, spacing, intermod, min: Math.round(min * 1000), max: Math.round(max * 1000) };
 }
 
 // Only newly introduced interactions count; pre-existing occupied/occupied conflicts
@@ -92,7 +103,11 @@ export function calculate(banks: Bank[], settings: Settings): Plan | null {
     for (const state of beam) {
       const existing = [...p.occupied, ...state.channels.map(c => c.frequency)];
       for (const channel of bank.channels) {
-        const margin = clearance(existing, channel.frequency, p.spacing, p.intermod);
+        // Bands are exclusions, not discrete transmitters for IM3 calculations.
+        const bandMargin = p.occupiedRanges.reduce((margin, range) => Math.min(margin,
+          Math.max(range.start - channel.frequency, channel.frequency - range.end) - p.spacing), 10000);
+        if (bandMargin < 0) continue;
+        const margin = Math.min(bandMargin, clearance(existing, channel.frequency, p.spacing, p.intermod));
         if (margin >= 0) next.push({ channels: [...state.channels, { ...channel, name: bank.name }], margin: Math.min(state.margin, margin) });
       }
     }

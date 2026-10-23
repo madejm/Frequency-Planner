@@ -2,7 +2,7 @@ import { useMemo, useState } from 'preact/hooks';
 import { parseSettings, type Plan, type Settings } from './planner';
 
 export const carrierColors = ['#2478b5', '#db6635', '#8b52b3', '#27876a', '#c14376', '#948016'];
-type Carrier = { frequency: number; name: string; color: string };
+type Carrier = { frequency: number; name: string; color: string; occupied?: boolean };
 type Ghost = { frequency: number; weight: number; expression: string; color: string; count: number; sources: string[] };
 const mhz = (frequency: number) => (frequency / 1000).toFixed(3);
 
@@ -52,10 +52,10 @@ export function Spectrum({ plan, settings }: { plan: Plan; settings: Settings })
   const candidate = hovered ?? focused ?? selected;
   const active = candidate === dismissed ? null : candidate;
   const [storageError, setStorageError] = useState(false);
-  const { min, max, occupied } = parseSettings(settings);
+  const { min, max, occupied, occupiedRanges } = parseSettings(settings);
   const carriers: Carrier[] = [
     ...plan.channels.map((c, i) => ({ ...c, color: carrierColors[i] })),
-    ...occupied.map((frequency, i) => ({ frequency, name: `Occupied ${i + 1}`, color: `hsl(${(i * 137.508 + 195) % 360} 52% 40%)` })),
+    ...occupied.map((frequency, i) => ({ frequency, name: `Occupied ${i + 1}`, color: '#c73535', occupied: true })),
   ];
   const showProducts = plan.channels.some(c => enabled[c.name]);
   const ghosts = useMemo(() => products(carriers, min, max, enabled), [plan, settings, enabled]);
@@ -71,14 +71,15 @@ export function Spectrum({ plan, settings }: { plan: Plan; settings: Settings })
     <div class="spectrum-sticky-header">
     <svg class="spectrum-plot" viewBox="0 0 700 150" role="img" aria-labelledby="spectrum-title spectrum-description">
       <title id="spectrum-title">Carrier and intermodulation frequency chart</title>
-      <desc id="spectrum-description">Equal-height colored carriers from {mhz(min)} to {mhz(max)} MHz. {active ? `${active} is highlighted. ` : ''}{showProducts ? `${ghosts.length} smaller third-order product poles. Heights are an illustrative equal-input cubic amplitude model, not predicted RF strength.` : 'Intermodulation products hidden. Enable them for individual channels below.'}</desc>
+      <desc id="spectrum-description">Thin dashed red poles mark occupied frequencies and red shaded areas mark occupied ranges. Equal-height colored carriers from {mhz(min)} to {mhz(max)} MHz. {active ? `${active} is highlighted. ` : ''}{showProducts ? `${ghosts.length} smaller third-order product poles. Heights are an illustrative equal-input cubic amplitude model, not predicted RF strength.` : 'Intermodulation products hidden. Enable them for individual channels below.'}</desc>
       {Array.from({ length: 11 }, (_, i) => <line key={i} x1={12 + i * 67.6} x2={12 + i * 67.6} y1="10" y2="115" stroke="#e7ecdf" />)}
       <line x1="12" x2="688" y1="115" y2="115" stroke="#cbd5c0" />
+      {occupiedRanges.filter(range => range.end >= min && range.start <= max).map(range => <rect key={`${range.start}-${range.end}`} x={x(Math.max(min, range.start))} y="10" width={x(Math.min(max, range.end)) - x(Math.max(min, range.start))} height="105" fill="#c73535" fill-opacity=".18" stroke="#c73535" stroke-width="1" stroke-dasharray="6 3" vector-effect="non-scaling-stroke"><title>Occupied range: {mhz(range.start)}–{mhz(range.end)} MHz</title></rect>)}
       {ghosts.map(g => <line key={g.frequency} x1={x(g.frequency)} x2={x(g.frequency)} y1={115 - g.weight * 22} y2="115" stroke={g.color} stroke-width={active && g.sources.includes(active) ? 2.5 : 1.75} vector-effect="non-scaling-stroke" stroke-opacity={active && g.sources.includes(active) ? .85 : .45} stroke-dasharray="3 2"><title>{mhz(g.frequency)} MHz · {g.expression} MHz{g.count > 1 ? ` · ${g.count} coincident products (not summed)` : ''} · illustrative amplitude only</title></line>)}
-      {carriers.filter(c => c.frequency >= min && c.frequency <= max).sort((a, b) => Number(a.name === active) - Number(b.name === active)).map(c => <line key={c.name} x1={x(c.frequency)} x2={x(c.frequency)} y1="15" y2="115" stroke={c.color} stroke-width={c.name === active ? 12 : 7} vector-effect="non-scaling-stroke" stroke-linecap="round"><title>{c.name}: {mhz(c.frequency)} MHz</title></line>)}
+      {carriers.filter(c => c.frequency >= min && c.frequency <= max).sort((a, b) => Number(a.name === active) - Number(b.name === active)).map(c => <line key={c.name} x1={x(c.frequency)} x2={x(c.frequency)} y1="15" y2="115" stroke={c.color} stroke-width={c.occupied ? 2 : c.name === active ? 12 : 7} stroke-dasharray={c.occupied ? '6 3' : undefined} vector-effect="non-scaling-stroke" stroke-linecap={c.occupied ? 'butt' : 'round'}><title>{c.name}: {mhz(c.frequency)} MHz</title></line>)}
       <text x="12" y="141">{mhz(min)} MHz</text><text x="688" y="141" text-anchor="end">{mhz(max)} MHz</text>
     </svg>
-    {occupied.length > 0 && <div class="occupied-legend">{carriers.slice(plan.channels.length).map(c => <span key={c.name}><i style={{ background: c.color }} />{c.name}: {mhz(c.frequency)} MHz{c.frequency < min || c.frequency > max ? ' (off chart)' : ''}</span>)}</div>}
+    {occupied.length + occupiedRanges.length > 0 && <div class="occupied-legend">{carriers.slice(plan.channels.length).map(c => <span key={c.name}><i style={{ background: c.color }} />{c.name}: {mhz(c.frequency)} MHz{c.frequency < min || c.frequency > max ? ' (off chart)' : ''}</span>)}{occupiedRanges.map(range => <span key={`${range.start}-${range.end}`}><i style={{ background: '#c73535' }} />Occupied range: {mhz(range.start)}–{mhz(range.end)} MHz{range.end < min || range.start > max ? ' (off chart)' : ''}</span>)}</div>}
     <p id="ghost-help" class="hint ghost-help">Hover, focus, or tap a channel to highlight its carrier. Enable IM3 products per channel below. <span class="im3-count">{ghosts.length}</span> unique IM3 frequencies shown, including interactions with occupied transmitters. Dashed pole heights illustrate equal-input cubic amplitudes (two-tone 1, three-tone 2), not actual RF strength. Color matches an enabled source; hover a pole for its formula.</p>
     {storageError && <p class="switch-save-error" role="status">The switch settings could not be saved.</p>}
     </div>
