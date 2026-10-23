@@ -1,3 +1,5 @@
+[https://madejm.github.io/Frequency-Planner/](https://madejm.github.io/Frequency-Planner/)
+
 # Frequency
 
 A small mobile IEM frequency planner for two Phenyx PTM-10 transmitters and the four outputs of a PTM-33. Written in TypeScript with Preact; Vite produces a static GitHub Pages site. No server or account required.

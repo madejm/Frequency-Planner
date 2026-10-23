@@ -68,6 +68,7 @@ export function Spectrum({ plan, settings }: { plan: Plan; settings: Settings })
   }
 
   return <div class="spectrum-section">
+    <div class="spectrum-sticky-header">
     <svg class="spectrum-plot" viewBox="0 0 700 150" role="img" aria-labelledby="spectrum-title spectrum-description">
       <title id="spectrum-title">Carrier and intermodulation frequency chart</title>
       <desc id="spectrum-description">Equal-height colored carriers from {mhz(min)} to {mhz(max)} MHz. {active ? `${active} is highlighted. ` : ''}{showProducts ? `${ghosts.length} smaller third-order product poles. Heights are an illustrative equal-input cubic amplitude model, not predicted RF strength.` : 'Intermodulation products hidden. Enable them for individual channels below.'}</desc>
@@ -79,7 +80,8 @@ export function Spectrum({ plan, settings }: { plan: Plan; settings: Settings })
     </svg>
     {occupied.length > 0 && <div class="occupied-legend">{carriers.slice(plan.channels.length).map(c => <span key={c.name}><i style={{ background: c.color }} />{c.name}: {mhz(c.frequency)} MHz{c.frequency < min || c.frequency > max ? ' (off chart)' : ''}</span>)}</div>}
     <p id="ghost-help" class="hint ghost-help">Hover, focus, or tap a channel to highlight its carrier. Enable IM3 products per channel below. <span class="im3-count">{ghosts.length}</span> unique IM3 frequencies shown, including interactions with occupied transmitters. Dashed pole heights illustrate equal-input cubic amplitudes (two-tone 1, three-tone 2), not actual RF strength. Color matches an enabled source; hover a pole for its formula.</p>
-    <p class="switch-save-error" role="status" style={{ visibility: storageError ? 'visible' : 'hidden' }}>The switch settings could not be saved.</p>
+    {storageError && <p class="switch-save-error" role="status">The switch settings could not be saved.</p>}
+    </div>
     <div class="channel-list">{plan.channels.map((c, i) => <article class={`channel channel-row ${active === c.name ? 'is-highlighted' : ''}`} key={c.name}>
       <button type="button" class="channel-select" aria-pressed={selected === c.name} aria-label={`Highlight ${c.name}, ${mhz(c.frequency)} MHz`}
         onMouseEnter={() => { setHovered(c.name); setDismissed(null); }} onMouseLeave={() => setHovered(null)}
