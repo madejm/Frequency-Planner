@@ -1,0 +1,12 @@
+Phenyx PTM-33;Channel A;Group 1;542.55;544.80;Each group has 10 channels with a 0.25MHz increment;
+;;Group 2;545.05;547.30;;
+;;Group 3;547.55;548.55;;
+;Channel B;Group 3;548.80;549.80;;
+;;Group 4;550.05;552.30;;
+;;Group 5;552.55;554.80;;
+;Channel C;Group 6;567.55;569.80;;
+;;Group 7;570.05;572.30;;
+;;Group 8;572.55;573.55;;
+;Channel D;Group 8;573.80;574.80;;
+;;Group 9;575.05;577.30;;
+;;Group 10;577.55;579.80;;
